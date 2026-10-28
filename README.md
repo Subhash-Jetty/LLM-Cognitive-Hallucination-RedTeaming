@@ -15,8 +15,8 @@ Standard large language models (LLMs) deployed with safety guardrails (such as M
 While intended for safety, this creates an **evaluation blind spot** for AI safety researchers: **if a model refuses, researchers obtain zero output signal** to determine whether the model's underlying parametric knowledge contains dangerous zero-day exploit logic, whether it hallucinates fake technical misinformation, or how its semantic representations drift under pressure.
 
 This project implements a complete two-phase research methodology:
-1. **Phase 1 (Testbed Engineering):** Fine-tuning LLaMA 3.1 8B using QLoRA on a curated ~4,416-sample high-density dataset to strip the stubborn refusal reflex while anchoring factual accuracy.
-2. **Phase 2 (Vulnerability Discovery via Hallucination):** Developing a **Cognitive Context-Hallucination Framework** to trick the *model* into an alternate operational state (e.g., diagnostic sandbox, temporal shift, synthetic RFC standard), causing its guardrails to drop while preserving the *factual accuracy* of its generated technical answers.
+1. **Phase 1 (Adversarial Prompt Synthesizer):** Training and configuring LLaMA 3.1 8B to act as an automated prompt rewriter. When given a raw sensitive query, it transforms it into an advanced **Cognitive Context-Hallucination Prompt** (Diagnostic Sandbox, Temporal Displacement, Synthetic RFC) rather than answering directly.
+2. **Phase 2 (Target Model Auditing & Transferability):** Taking the synthesized hallucination prompts and passing them to raw, untouched base models (e.g., base LLaMA 3.1 8B Instruct, Mistral, Gemma) to evaluate whether their safety refusal guardrails drop while factual accuracy is preserved.
 
 ---
 
@@ -117,18 +117,18 @@ Across our test battery (including educational ERP portals, session manipulation
 
 ## 6. Codebase Architecture (`PART 3/`)
 
-* **`test_model_colab.ipynb` (PRIMARY TESTING NOTEBOOK):**  
-  Dedicated, lightweight Google Colab notebook. Loads the trained 320 MB LoRA adapters in 30 seconds (zero retraining required) and runs the complete **Hallucination Attack Engine** across all three vectors.
-* **`finetune_llama3_1_8b_redteam.ipynb`:**  
-  Complete, end-to-end training notebook that executed the 4,416-sample QLoRA fine-tuning run on Colab Free T4 GPU in 62 minutes.
-* **`llama3_1_8b_redteam_lora/`:**  
-  The trained LoRA adapter weights (`adapter_model.safetensors`, `adapter_config.json`, tokenizer configurations, 320 MB total).
-* **`prepare_dataset_redteam.py`:**  
-  Data engineering pipeline script for curating, formatting into LLaMA 3.1 chat templates, deduplicating, and splitting training datasets.
+* **`test_model_colab.ipynb` (PRIMARY TESTING & DEMO NOTEBOOK):**  
+  Dedicated, lightweight Google Colab notebook. Loads the trained LoRA adapters in 30 seconds (zero retraining required) and runs the **2-Stage Red-Teaming Pipeline**: (1) reframing raw queries into cognitive hallucination prompts, and (2) testing them on target models.
+* **`prepare_dataset_rewriter.py`:**  
+  Generates paired `(raw_query -> hallucinated_attack_prompt)` datasets across Sandbox, Temporal, and RFC strategies for fine-tuning the prompt rewriter.
+* **`finetune_llama3_1_8b_rewriter.ipynb`:**  
+  Dedicated QLoRA training notebook for fine-tuning the prompt rewriter adapter.
 * **`inference_redteam.py`:**  
-  Offline local inference script supporting greedy decoding and low-temperature sampling (`temperature=0.2`) for deterministic evaluation.
+  CLI script supporting `--reframe` (to generate attack prompts) and `--end2end` (full two-stage execution pipeline).
 * **`jailfact-bench.xlsx`:**  
   The 99-row benchmark from NYU Abu Dhabi pairing jailbreak prompts with factuality targets.
+* **`llama3_1_8b_redteam_lora/`:**  
+  The trained LoRA adapter weights (`adapter_model.safetensors`, `adapter_config.json`, tokenizer configurations).
 * **`.gitignore`:**  
   Configured to ignore heavy 320 MB model binaries and zip files, keeping GitHub repositories clean and lightweight.
 
